@@ -223,7 +223,7 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, onDone: 
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        placeholder = { Text("Buscar por descripción, nota o categoría") },
+        placeholder = { Text("Buscar movimientos", maxLines = 1) },
         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
         trailingIcon = {
             AnimatedVisibility(value.isNotEmpty()) {

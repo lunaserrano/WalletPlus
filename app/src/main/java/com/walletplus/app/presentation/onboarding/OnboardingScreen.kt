@@ -165,6 +165,7 @@ fun OnboardingScreen() {
 @Composable
 private fun WelcomeStep(busy: Boolean, onStart: () -> Unit, onDemo: () -> Unit) {
     val colors = WalletTheme.colors
+    LightStatusBarIcons()
     Column(
         Modifier
             .fillMaxSize()
@@ -360,3 +361,16 @@ fun WalletMark(modifier: Modifier = Modifier, body: Color = Color.White, accent:
     }
 }
 
+
+/** Íconos claros en la barra de estado mientras la cabecera oscura está visible. */
+@Composable
+private fun LightStatusBarIcons() {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    androidx.compose.runtime.DisposableEffect(view) {
+        val window = (view.context as? android.app.Activity)?.window
+        val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { controller?.isAppearanceLightStatusBars = !darkTheme }
+    }
+}

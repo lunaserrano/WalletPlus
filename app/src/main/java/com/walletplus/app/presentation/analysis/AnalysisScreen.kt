@@ -235,8 +235,8 @@ private fun SummaryCard(snapshot: FinancialSnapshot) {
     val previous = snapshot.previousSummary
     WalletCard {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            SummaryMetric("Ingresos", summary.income, previous.income, previous.hasData, higherIsGood = true, modifier = Modifier.weight(1f))
-            SummaryMetric("Gastos", summary.expense, previous.expense, previous.hasData, higherIsGood = false, modifier = Modifier.weight(1f))
+            SummaryMetric("Ingresos", summary.income, previous.income, previous.hasData, higherIsGood = true, partial = snapshot.month == java.time.YearMonth.from(snapshot.today), modifier = Modifier.weight(1f))
+            SummaryMetric("Gastos", summary.expense, previous.expense, previous.hasData, higherIsGood = false, partial = snapshot.month == java.time.YearMonth.from(snapshot.today), modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(Spacing.lg))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -267,20 +267,25 @@ private fun SummaryMetric(
     previous: Money,
     hasPrevious: Boolean,
     higherIsGood: Boolean,
+    partial: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MoneyText(current, style = MaterialTheme.typography.titleLarge)
         val change = if (hasPrevious) Percent.change(previous, current) else null
-        if (change != null && change.basisPoints != 0L) {
+        // El mes en curso aún no termina: se compara contra el mes anterior completo.
+        val versus = if (partial) "vs. mes anterior completo" else "vs. mes anterior"
+        if (change != null && change.basisPoints == 0L) {
+            Text("Igual que el mes anterior", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else if (change != null) {
             val up = change.basisPoints > 0
             val good = up == higherIsGood
             val color = if (good) WalletTheme.colors.income else WalletTheme.colors.expense
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(if (up) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
                 Text(
-                    "${PercentFormat.format(change).removePrefix("−")} vs. mes anterior",
+                    "${PercentFormat.format(change).removePrefix("−")} $versus",
                     style = MaterialTheme.typography.labelSmall,
                     color = color,
                 )

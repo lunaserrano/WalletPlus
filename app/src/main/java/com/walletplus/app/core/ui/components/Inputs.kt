@@ -64,7 +64,7 @@ fun SegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    selectedColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    selectedColor: Color = if (androidx.compose.foundation.isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLowest,
     height: Dp = 44.dp,
 ) {
     val haptics = LocalHapticFeedback.current

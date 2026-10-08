@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -156,6 +159,7 @@ fun MainScaffold() {
                 }
             },
         ) { padding ->
+          Box(Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
                 startDestination = HomeRoute,
@@ -208,6 +212,14 @@ fun MainScaffold() {
                     CategoriesScreen(onBack = { navController.popBackStack() })
                 }
             }
+            // Fondo bajo la barra de estado para que el contenido no se mezcle con los íconos.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.94f)),
+            )
+          }
         }
 
         editor?.let { request ->

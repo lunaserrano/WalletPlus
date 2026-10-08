@@ -81,6 +81,15 @@ import com.walletplus.app.presentation.planning.PlanningScreen
 import com.walletplus.app.presentation.settings.SettingsScreen
 import com.walletplus.app.presentation.transactions.TransactionEditorSheet
 import com.walletplus.app.presentation.transactions.TransactionsScreen
+import com.walletplus.app.presentation.tour.FirstUseTourSteps
+import com.walletplus.app.presentation.tour.GuidedTour
+import com.walletplus.app.presentation.tour.LocalTourTargets
+import com.walletplus.app.presentation.tour.TourIds
+import com.walletplus.app.presentation.tour.TourTargets
+import com.walletplus.app.presentation.tour.TourViewModel
+import com.walletplus.app.presentation.tour.tourTarget
+import com.walletplus.app.core.di.walletViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walletplus.domain.model.TransactionType
 import kotlinx.serialization.Serializable
 
@@ -92,6 +101,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object CategoriesRoute
 
 private data class TopLevel(
+    val tourId: String?,
     val label: String,
     val route: Any,
     val selectedIcon: ImageVector,
@@ -100,10 +110,10 @@ private data class TopLevel(
 )
 
 private val topLevels = listOf(
-    TopLevel("Inicio", HomeRoute, Icons.Rounded.Home, Icons.Outlined.Home) { it.hasRoute<HomeRoute>() },
-    TopLevel("Movimientos", TransactionsRoute, Icons.Rounded.ReceiptLong, Icons.Outlined.ReceiptLong) { it.hasRoute<TransactionsRoute>() },
-    TopLevel("Planificar", PlanRoute(), Icons.Rounded.TrackChanges, Icons.Outlined.TrackChanges) { it.hasRoute<PlanRoute>() },
-    TopLevel("Análisis", AnalysisRoute, Icons.Rounded.Insights, Icons.Outlined.Insights) { it.hasRoute<AnalysisRoute>() },
+    TopLevel(null, "Inicio", HomeRoute, Icons.Rounded.Home, Icons.Outlined.Home) { it.hasRoute<HomeRoute>() },
+    TopLevel(TourIds.TRANSACTIONS, "Movimientos", TransactionsRoute, Icons.Rounded.ReceiptLong, Icons.Outlined.ReceiptLong) { it.hasRoute<TransactionsRoute>() },
+    TopLevel(TourIds.PLAN, "Planificar", PlanRoute(), Icons.Rounded.TrackChanges, Icons.Outlined.TrackChanges) { it.hasRoute<PlanRoute>() },
+    TopLevel(TourIds.ANALYSIS, "Análisis", AnalysisRoute, Icons.Rounded.Insights, Icons.Outlined.Insights) { it.hasRoute<AnalysisRoute>() },
 )
 
 /** Petición para abrir el editor de movimientos. id = 0 crea uno nuevo. */
@@ -120,6 +130,9 @@ fun MainScaffold() {
     val scope = rememberCoroutineScope()
     val messenger = remember { Messenger(snackbarHost, scope) }
     var editor by remember { mutableStateOf<EditorRequest?>(null) }
+    val tourTargets = remember { TourTargets() }
+    val tourViewModel = walletViewModel { TourViewModel(it.settings, it.updatePreferences) }
+    val showTour by tourViewModel.shouldShow.collectAsStateWithLifecycle()
 
     fun navigateTopLevel(route: Any) {
         navController.navigate(route) {
@@ -131,7 +144,7 @@ fun MainScaffold() {
 
     val openEditor: (Long, TransactionType) -> Unit = { id, type -> editor = EditorRequest(id, type) }
 
-    CompositionLocalProvider(LocalMessenger provides messenger) {
+    CompositionLocalProvider(LocalMessenger provides messenger, LocalTourTargets provides tourTargets) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = {
@@ -201,6 +214,7 @@ fun MainScaffold() {
                 ) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
+                        onReplayTour = { navController.popBackStack(HomeRoute, inclusive = false) },
                         onOpenCategories = { navController.navigate(CategoriesRoute) },
                     )
                 }
@@ -227,6 +241,12 @@ fun MainScaffold() {
                 request = request,
                 onDismiss = { editor = null },
             )
+        }
+
+        // Recorrido guiado de primer uso: solo sobre Inicio y si no hay otra hoja abierta.
+        val onHome = destination?.hasRoute<HomeRoute>() ?: false
+        if (showTour == true && onHome && editor == null) {
+            GuidedTour(steps = FirstUseTourSteps, targets = tourTargets, onFinish = tourViewModel::finish)
         }
     }
 }
@@ -266,6 +286,7 @@ private fun WalletBottomBar(
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
+                        .tourTarget(TourIds.ADD)
                         .size(56.dp)
                         .shadow(10.dp, CircleShape, ambientColor = MaterialTheme.colorScheme.primary, spotColor = MaterialTheme.colorScheme.primary)
                         .semantics { role = Role.Button },
@@ -291,6 +312,7 @@ private fun androidx.compose.foundation.layout.RowScope.BarItem(item: TopLevel, 
     Column(
         modifier = Modifier
             .weight(1f)
+            .then(if (item.tourId != null) Modifier.tourTarget(item.tourId) else Modifier)
             .clip(MaterialTheme.shapes.medium)
             .semantics(mergeDescendants = true) {
                 this.selected = selected

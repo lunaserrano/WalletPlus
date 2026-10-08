@@ -94,6 +94,8 @@ data class UserSettings(
     val onboardingCompleted: Boolean = false,
     val demoMode: Boolean = false,
     val lockEnabled: Boolean = false,
+    /** El usuario ya vio (o descartó) el recorrido guiado de primer uso. */
+    val tourCompleted: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_CURRENCY = "USD"

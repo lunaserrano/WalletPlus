@@ -42,6 +42,7 @@ class SettingsViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     suspend fun setName(name: String) = preferences.displayName(name)
+    suspend fun replayTour() = preferences.tourCompleted(false)
     suspend fun setCurrency(code: String) = preferences.currency(code)
     suspend fun saveAccount(balance: Money?, start: LocalDate): Outcome<Unit, SettingsError> = updateAccount(balance, start)
     suspend fun savePlan(plan: MonthlyPlan): Outcome<Unit, SettingsError> = updatePlan(plan)

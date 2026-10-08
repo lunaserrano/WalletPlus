@@ -97,6 +97,10 @@ class UpdatePreferencesUseCase(
         return Outcome.Success(Unit)
     }
 
+    suspend fun tourCompleted(done: Boolean) {
+        settings.update { it.copy(tourCompleted = done) }
+    }
+
     suspend fun displayName(name: String?) {
         settings.update { it.copy(displayName = name?.trim()?.takeIf { value -> value.isNotEmpty() }) }
     }

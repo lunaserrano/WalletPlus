@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Person
@@ -81,7 +82,7 @@ private enum class SettingsSheet { NAME, CURRENCY, ACCOUNT, PLAN, PIN }
 private enum class Confirm { DEMO, RESET }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onOpenCategories: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onReplayTour: () -> Unit, onOpenCategories: () -> Unit) {
     val viewModel = walletViewModel { c ->
         SettingsViewModel(
             c.settings, c.accounts, c.updatePreferences, c.updateAccount, c.updatePlan,
@@ -135,6 +136,15 @@ fun SettingsScreen(onBack: () -> Unit, onOpenCategories: () -> Unit) {
                 else "Ingreso esperado, gasto máximo y ahorro",
             ) { sheet = SettingsSheet.PLAN }
             SettingRow(Icons.Rounded.Category, "Categorías", "Crear, editar o desactivar", onClick = onOpenCategories)
+        }
+
+        Group("Ayuda") {
+            SettingRow(Icons.Rounded.Explore, "Ver recorrido guiado", "Repasa las funciones principales paso a paso") {
+                scope.launch {
+                    viewModel.replayTour()
+                    onReplayTour()
+                }
+            }
         }
 
         Group("Seguridad") {

@@ -126,6 +126,7 @@ fun UserSettingsEntity?.toDomain(): UserSettings {
         onboardingCompleted = onboardingCompleted,
         demoMode = demoMode,
         lockEnabled = lockEnabled,
+        tourCompleted = tourCompleted,
     )
 }
 
@@ -139,6 +140,7 @@ fun UserSettings.toEntity(existing: UserSettingsEntity?) = UserSettingsEntity(
     onboardingCompleted = onboardingCompleted,
     demoMode = demoMode,
     lockEnabled = lockEnabled,
+    tourCompleted = tourCompleted,
     pinHash = existing?.pinHash,
     pinSalt = existing?.pinSalt,
 )

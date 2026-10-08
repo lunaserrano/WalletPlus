@@ -70,6 +70,8 @@ import com.walletplus.app.core.ui.theme.WalletTheme
 import com.walletplus.app.core.ui.theme.tabular
 import com.walletplus.app.presentation.common.InsightCard
 import com.walletplus.app.presentation.common.TransactionRow
+import com.walletplus.app.presentation.tour.TourIds
+import com.walletplus.app.presentation.tour.tourTarget
 import com.walletplus.domain.calc.CategoryShare
 import com.walletplus.domain.calc.GoalProgress
 import com.walletplus.domain.calc.PlanComparison
@@ -145,7 +147,7 @@ private fun DashboardContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                FilledTonalIconButton(onClick = onOpenSettings) {
+                FilledTonalIconButton(onClick = onOpenSettings, modifier = Modifier.tourTarget(TourIds.SETTINGS)) {
                     Icon(Icons.Rounded.Settings, contentDescription = "Configuración")
                 }
             }
@@ -236,6 +238,7 @@ private fun BalanceHero(snapshot: FinancialSnapshot) {
     Box(
         Modifier
             .fillMaxWidth()
+            .tourTarget(TourIds.BALANCE)
             .clip(MaterialTheme.shapes.extraLarge)
             .background(Brush.linearGradient(listOf(colors.heroStart, colors.heroEnd))),
     ) {

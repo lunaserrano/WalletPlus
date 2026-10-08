@@ -116,6 +116,7 @@ data class UserSettingsEntity(
     @ColumnInfo(name = "onboarding_completed") val onboardingCompleted: Boolean,
     @ColumnInfo(name = "demo_mode") val demoMode: Boolean,
     @ColumnInfo(name = "lock_enabled") val lockEnabled: Boolean,
+    @ColumnInfo(name = "tour_completed", defaultValue = "0") val tourCompleted: Boolean = false,
     /** Hash PBKDF2 del PIN (nunca el PIN en texto plano). */
     @ColumnInfo(name = "pin_hash") val pinHash: String?,
     @ColumnInfo(name = "pin_salt") val pinSalt: String?,

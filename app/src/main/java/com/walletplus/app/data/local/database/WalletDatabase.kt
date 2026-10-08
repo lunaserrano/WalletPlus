@@ -7,6 +7,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.walletplus.app.data.local.dao.AccountDao
 import com.walletplus.app.data.local.dao.BudgetDao
@@ -35,7 +36,7 @@ import com.walletplus.domain.model.UserSettings
         UserSettingsEntity::class,
         RecurringTransactionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -51,8 +52,16 @@ abstract class WalletDatabase : RoomDatabase() {
     companion object {
         private const val NAME = "walletplus.db"
 
+        /** v2: marca de recorrido guiado de primer uso. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN tour_completed INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun build(context: Context): WalletDatabase =
             Room.databaseBuilder(context, WalletDatabase::class.java, NAME)
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(SeedCallback)
                 .build()
 
@@ -88,6 +97,7 @@ abstract class WalletDatabase : RoomDatabase() {
                 put("onboarding_completed", 0)
                 put("demo_mode", 0)
                 put("lock_enabled", 0)
+                put("tour_completed", 0)
                 putNull("pin_hash")
                 putNull("pin_salt")
             }

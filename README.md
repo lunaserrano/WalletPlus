@@ -17,7 +17,7 @@ Los datos nunca salen del dispositivo: la app no pide permiso de Internet, no ti
 
 ## Arquitectura
 
-```
+```text
 :domain   Kotlin puro (sin Android): modelos, Money/Percent, cálculos,
           motor de recomendaciones, casos de uso e interfaces de repositorio.
 :app      Android: Room (data), DI manual (core/di), seguridad, design system

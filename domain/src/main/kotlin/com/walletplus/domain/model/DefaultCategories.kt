@@ -12,25 +12,25 @@ object DefaultCategories {
     )
 
     val expense = listOf(
-        Seed("food", "Alimentación", "🛒", "green", TransactionType.EXPENSE),
+        Seed("food", "Alimentación", "🛒", "aqua", TransactionType.EXPENSE),
         Seed("transport", "Transporte", "🚌", "blue", TransactionType.EXPENSE),
-        Seed("housing", "Vivienda", "🏠", "indigo", TransactionType.EXPENSE),
-        Seed("utilities", "Servicios", "💡", "amber", TransactionType.EXPENSE),
+        Seed("housing", "Vivienda", "🏠", "violet", TransactionType.EXPENSE),
+        Seed("utilities", "Servicios", "💡", "yellow", TransactionType.EXPENSE),
         Seed("health", "Salud", "🩺", "red", TransactionType.EXPENSE),
-        Seed("education", "Educación", "📚", "cyan", TransactionType.EXPENSE),
-        Seed("entertainment", "Entretenimiento", "🎬", "pink", TransactionType.EXPENSE),
-        Seed("shopping", "Compras", "🛍️", "purple", TransactionType.EXPENSE),
-        Seed("debt", "Deudas", "💳", "orange", TransactionType.EXPENSE),
-        Seed("subscriptions", "Suscripciones", "🔁", "teal", TransactionType.EXPENSE),
+        Seed("education", "Educación", "📚", "green", TransactionType.EXPENSE),
+        Seed("entertainment", "Entretenimiento", "🎬", "magenta", TransactionType.EXPENSE),
+        Seed("shopping", "Compras", "🛍️", "orange", TransactionType.EXPENSE),
+        Seed("debt", "Deudas", "💳", "red", TransactionType.EXPENSE),
+        Seed("subscriptions", "Suscripciones", "🔁", "blue", TransactionType.EXPENSE),
         Seed("other_expense", "Otros", "📦", "slate", TransactionType.EXPENSE),
     )
 
     val income = listOf(
-        Seed("salary", "Salario", "💼", "green", TransactionType.INCOME),
+        Seed("salary", "Salario", "💼", "aqua", TransactionType.INCOME),
         Seed("freelance", "Trabajo independiente", "🧑‍💻", "blue", TransactionType.INCOME),
-        Seed("sales", "Ventas", "🏷️", "amber", TransactionType.INCOME),
-        Seed("commission", "Comisiones", "📈", "teal", TransactionType.INCOME),
-        Seed("gift", "Regalos", "🎁", "pink", TransactionType.INCOME),
+        Seed("sales", "Ventas", "🏷️", "yellow", TransactionType.INCOME),
+        Seed("commission", "Comisiones", "📈", "violet", TransactionType.INCOME),
+        Seed("gift", "Regalos", "🎁", "magenta", TransactionType.INCOME),
         Seed("other_income", "Otros ingresos", "✨", "slate", TransactionType.INCOME),
     )
 

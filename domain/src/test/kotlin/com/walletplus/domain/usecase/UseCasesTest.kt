@@ -7,9 +7,13 @@ import com.walletplus.domain.SALARY
 import com.walletplus.domain.TODAY
 import com.walletplus.domain.insights.Insight
 import com.walletplus.domain.model.Account
+import com.walletplus.domain.model.Budget
 import com.walletplus.domain.model.DefaultCategories
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.TransactionType
 import com.walletplus.domain.money.Money
+import com.walletplus.domain.time.Period
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.usd
 import com.walletplus.domain.validation.BudgetError
 import com.walletplus.domain.validation.GoalError
@@ -44,7 +48,7 @@ class UseCasesTest {
     fun `saldo 500 + ingreso 1000 - gasto 300 = 1200`() = runTest {
         save(draft(TransactionType.INCOME, usd(1000), SALARY.id))
         save(draft(TransactionType.EXPENSE, usd(300), FOOD.id))
-        val result = snapshot(YearMonth.from(TODAY)).filterNotNull().first()
+        val result = snapshot(Period.month(YearMonth.from(TODAY))).filterNotNull().first()
         assertEquals(usd(1200), result.balance)
         assertEquals(usd(700), result.summary.savings)
         assertTrue(result.insights.any { it is Insight.SavingsRate })
@@ -133,5 +137,41 @@ class UseCasesTest {
         ResetAllDataUseCase(maintenance, settings)()
         assertTrue(transactions.state.value.isEmpty())
         assertEquals(false, settings.state.value.onboardingCompleted)
+    }
+
+    @Test
+    fun `ciclo quincenal convierte presupuestos y mide contra la quincena en curso`() = runTest {
+        budgets.save(Budget(categoryId = FOOD.id, limit = usd(300)))
+        save(draft(TransactionType.EXPENSE, usd(80), FOOD.id).copy(date = TODAY.withDayOfMonth(3)))
+        save(draft(TransactionType.EXPENSE, usd(200), FOOD.id).copy(date = TODAY.minusMonths(1).withDayOfMonth(20)))
+        val maintenance = FakeMaintenance(transactions, budgets, goals, accounts)
+        val updatePlan = UpdatePlanUseCase(settings, budgets, maintenance)
+
+        updatePlan(SpendingPlan(spendingLimit = usd(400)), PeriodType.BIWEEKLY)
+        assertEquals(PeriodType.BIWEEKLY, settings.state.value.payPeriod)
+        assertEquals(usd(150), budgets.state.value.single().limit)
+
+        val result = snapshot().filterNotNull().first()
+        assertEquals(Period.containing(PeriodType.BIWEEKLY, TODAY), result.period)
+        assertEquals(result.period, result.budgetPeriod)
+        assertEquals(usd(80), result.summary.expense)
+        assertEquals(usd(200), result.previousSummary.expense) // 16–30 sep
+        assertEquals(usd(80), result.budgets.single().spent)
+        assertEquals(usd(400), result.plan.spendingLimit)
+
+        updatePlan(SpendingPlan(spendingLimit = usd(800)), PeriodType.MONTHLY)
+        assertEquals(usd(300), budgets.state.value.single().limit)
+    }
+
+    @Test
+    fun `analisis semanal mide presupuestos contra el ciclo de pago`() = runTest {
+        save(draft(TransactionType.EXPENSE, usd(50), FOOD.id).copy(date = TODAY.withDayOfMonth(2)))
+        save(draft(TransactionType.EXPENSE, usd(20), FOOD.id))
+        val week = Period.containing(PeriodType.WEEKLY, TODAY)
+        val result = snapshot(week).filterNotNull().first()
+        assertEquals(week, result.period)
+        assertEquals(usd(20), result.summary.expense)
+        assertEquals(Period.month(YearMonth.from(TODAY)), result.budgetPeriod)
+        assertEquals(usd(70), result.budgetSummary.expense)
     }
 }

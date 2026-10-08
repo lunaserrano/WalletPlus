@@ -1,6 +1,7 @@
 package com.walletplus.domain.model
 
 import com.walletplus.domain.money.Money
+import com.walletplus.domain.time.PeriodType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -57,7 +58,8 @@ data class Transaction(
 }
 
 /**
- * Presupuesto mensual por categoría. [yearMonth] null significa que aplica a todos los meses.
+ * Presupuesto por categoría para cada ciclo de pago ([UserSettings.payPeriod]).
+ * [yearMonth] null significa que aplica a todos los meses.
  */
 data class Budget(
     val id: Long = 0,
@@ -77,8 +79,8 @@ data class SavingsGoal(
     val isArchived: Boolean = false,
 )
 
-/** Presupuesto general del mes. Un valor cero significa "no definido". */
-data class MonthlyPlan(
+/** Presupuesto general por ciclo de pago (mes o quincena). Un valor cero significa "no definido". */
+data class SpendingPlan(
     val expectedIncome: Money = Money.ZERO,
     val spendingLimit: Money = Money.ZERO,
     val savingsTarget: Money = Money.ZERO,
@@ -90,7 +92,9 @@ data class MonthlyPlan(
 data class UserSettings(
     val currencyCode: String = DEFAULT_CURRENCY,
     val displayName: String? = null,
-    val plan: MonthlyPlan = MonthlyPlan(),
+    val plan: SpendingPlan = SpendingPlan(),
+    /** Cada cuánto cobra el usuario: define el periodo de presupuestos, plan y Dashboard. */
+    val payPeriod: PeriodType = PeriodType.MONTHLY,
     val onboardingCompleted: Boolean = false,
     val demoMode: Boolean = false,
     val lockEnabled: Boolean = false,

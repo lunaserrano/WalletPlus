@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.LocalTime
-import java.time.YearMonth
 
 sealed interface DashboardState {
     data object Loading : DashboardState
@@ -19,7 +18,8 @@ sealed interface DashboardState {
 
 class DashboardViewModel(observeSnapshot: ObserveFinancialSnapshot, private val clock: Clock) : ViewModel() {
 
-    val state: StateFlow<DashboardState> = observeSnapshot(YearMonth.now(clock))
+    /** Siempre el ciclo de pago en curso (mes o quincena). */
+    val state: StateFlow<DashboardState> = observeSnapshot()
         .map { snapshot ->
             if (snapshot == null) DashboardState.Loading
             else DashboardState.Ready(snapshot, greeting(snapshot.settings.displayName))

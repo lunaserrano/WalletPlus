@@ -41,6 +41,7 @@ interface TransactionRepository {
 
 interface BudgetRepository {
     fun observeAll(): Flow<List<Budget>>
+    suspend fun getAll(): List<Budget>
     suspend fun getByCategory(categoryId: Long): Budget?
     suspend fun save(budget: Budget): Long
     suspend fun delete(id: Long)

@@ -36,6 +36,27 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migrate2To3DefaultsToMonthlyPayPeriod() {
+        helper.createDatabase(DB, 2).use { db ->
+            db.execSQL(
+                """
+                INSERT INTO user_settings (id, currency_code, display_name, expected_income_cents, spending_limit_cents,
+                    savings_target_cents, onboarding_completed, demo_mode, lock_enabled, tour_completed, pin_hash, pin_salt)
+                VALUES (1, 'MXN', 'Ana', 120000, 80000, 40000, 1, 0, 0, 1, NULL, NULL)
+                """.trimIndent(),
+            )
+        }
+        helper.runMigrationsAndValidate(DB, 3, true, WalletDatabase.MIGRATION_2_3).use { db ->
+            db.query("SELECT currency_code, spending_limit_cents, pay_period FROM user_settings WHERE id = 1").use { cursor ->
+                cursor.moveToFirst()
+                assertEquals("MXN", cursor.getString(0))
+                assertEquals(80000L, cursor.getLong(1))
+                assertEquals("MONTHLY", cursor.getString(2))
+            }
+        }
+    }
+
     private companion object {
         const val DB = "migration-test.db"
     }

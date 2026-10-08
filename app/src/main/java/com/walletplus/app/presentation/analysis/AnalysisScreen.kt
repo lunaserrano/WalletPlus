@@ -53,6 +53,7 @@ import com.walletplus.app.core.ui.components.MoneyText
 import com.walletplus.app.core.ui.components.ProgressBar
 import com.walletplus.app.core.ui.components.ScreenTitle
 import com.walletplus.app.core.ui.components.SectionHeader
+import com.walletplus.app.core.ui.components.SegmentedControl
 import com.walletplus.app.core.ui.components.StackedBar
 import com.walletplus.app.core.ui.components.TrendBar
 import com.walletplus.app.core.ui.components.TrendChart
@@ -64,9 +65,16 @@ import com.walletplus.app.core.ui.theme.WalletTheme
 import com.walletplus.app.core.ui.theme.tabular
 import com.walletplus.app.presentation.common.EDUCATIONAL_DISCLAIMER
 import com.walletplus.app.presentation.common.InsightCard
+import com.walletplus.app.presentation.common.PeriodWords
+import com.walletplus.app.presentation.common.label
+import com.walletplus.app.presentation.common.words
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.usecase.FinancialSnapshot
+
+/** Vistas disponibles en Análisis, de la más corta a la más larga. */
+private val ViewTypes = listOf(PeriodType.WEEKLY, PeriodType.BIWEEKLY, PeriodType.MONTHLY)
 
 @Composable
 fun AnalysisScreen(contentPadding: PaddingValues, onAddTransaction: () -> Unit) {
@@ -86,47 +94,61 @@ fun AnalysisScreen(contentPadding: PaddingValues, onAddTransaction: () -> Unit) 
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
         item {
             ScreenTitle("Análisis") {
+                val period = state.period ?: return@ScreenTitle
+                val noun = period.type.words.noun.replaceFirstChar { it.uppercase() }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    FilledTonalIconButton(onClick = viewModel::previousMonth) {
-                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "Mes anterior")
+                    FilledTonalIconButton(onClick = viewModel::previousPeriod) {
+                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = "$noun anterior")
                     }
                     AnimatedContent(
-                        targetState = state.month,
+                        targetState = period,
                         transitionSpec = {
-                            val forward = targetState > initialState
+                            val forward = targetState.start > initialState.start
                             (slideInHorizontally { if (forward) it / 2 else -it / 2 } + fadeIn(Motion.emphasized()))
                                 .togetherWith(slideOutHorizontally { if (forward) -it / 2 else it / 2 } + fadeOut(Motion.emphasized(Motion.SHORT)))
                         },
-                        label = "month",
-                    ) { month ->
+                        label = "period",
+                    ) { shown ->
                         Text(
-                            DateFormats.monthShort(month) + if (month.year != state.currentMonth.year) " ${month.year % 100}" else "",
+                            DateFormats.periodShort(shown, state.today),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.padding(horizontal = Spacing.sm),
                         )
                     }
-                    FilledTonalIconButton(onClick = viewModel::nextMonth, enabled = state.canGoForward) {
-                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "Mes siguiente")
+                    FilledTonalIconButton(onClick = viewModel::nextPeriod, enabled = state.canGoForward) {
+                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = "$noun siguiente")
                     }
                 }
             }
         }
 
+        state.period?.let { period ->
+            item(key = "granularity") {
+                SegmentedControl(
+                    options = ViewTypes.map { it.label() },
+                    selectedIndex = ViewTypes.indexOf(period.type),
+                    onSelect = { viewModel.selectType(ViewTypes[it]) },
+                )
+            }
+        }
+
         if (state.trend.any { it.income.isPositive || it.expense.isPositive }) {
             item(key = "trend") {
-                TrendCard(state) { index -> viewModel.selectMonth(state.trend[index].month) }
+                TrendCard(state) { index -> viewModel.selectPeriod(state.trend[index].period) }
             }
         }
 
         if (snapshot == null) return@LazyColumn
+        val words = snapshot.period.type.words
 
         if (!snapshot.summary.hasData) {
             item {
                 WalletCard {
                     EmptyState(
                         emoji = "📊",
-                        title = "Sin datos en ${DateFormats.month(state.month, snapshot.today)}",
-                        message = "Cuando registres movimientos este mes, aquí verás en qué gastas y dónde podrías ahorrar.",
+                        title = if (snapshot.isCurrentPeriod) "Sin datos ${words.current}"
+                        else "Sin datos en ${DateFormats.period(snapshot.period, snapshot.today)}",
+                        message = "Cuando registres movimientos en este periodo, aquí verás en qué gastas y dónde podrías ahorrar.",
                         actionLabel = "Registrar movimiento",
                         onAction = onAddTransaction,
                     )
@@ -148,7 +170,7 @@ fun AnalysisScreen(contentPadding: PaddingValues, onAddTransaction: () -> Unit) 
 
         val changes = snapshot.categoryChanges.filter { it.change != null && it.current != it.previous }
         if (changes.isNotEmpty() && snapshot.previousSummary.hasData) {
-            item(key = "changes-header") { SectionHeader("Respecto al mes anterior") }
+            item(key = "changes-header") { SectionHeader("Respecto ${words.toPrevious}") }
             item(key = "changes") { ChangesCard(snapshot) }
         }
 
@@ -195,10 +217,18 @@ fun AnalysisScreen(contentPadding: PaddingValues, onAddTransaction: () -> Unit) 
 @Composable
 private fun TrendCard(state: AnalysisState, onSelect: (Int) -> Unit) {
     val formatter = LocalMoneyFormatter.current
-    val selectedIndex = state.trend.indexOfFirst { it.month == state.month }
+    val selectedIndex = state.trend.indexOfFirst { it.period == state.period }
     val selected = state.trend.getOrNull(selectedIndex)
+    val count = state.trend.size
     WalletCard {
-        Text("Últimos ${state.trend.size} meses", style = MaterialTheme.typography.titleSmall)
+        Text(
+            when (state.trend.first().period.type) {
+                PeriodType.WEEKLY -> "Últimas $count semanas"
+                PeriodType.BIWEEKLY -> "Últimas $count quincenas"
+                PeriodType.MONTHLY -> "Últimos $count meses"
+            },
+            style = MaterialTheme.typography.titleSmall,
+        )
         Spacer(Modifier.height(Spacing.sm))
         // Leyenda + valores del mes seleccionado (la identidad nunca depende solo del color).
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xl)) {
@@ -207,12 +237,12 @@ private fun TrendCard(state: AnalysisState, onSelect: (Int) -> Unit) {
         }
         Spacer(Modifier.height(Spacing.lg))
         TrendChart(
-            bars = state.trend.map { TrendBar(DateFormats.monthShort(it.month), it.income.cents, it.expense.cents) },
+            bars = state.trend.map { TrendBar(DateFormats.periodTick(it.period), it.income.cents, it.expense.cents) },
             incomeColor = WalletTheme.colors.income,
             expenseColor = WalletTheme.colors.expense,
             selectedIndex = selectedIndex,
             onSelect = onSelect,
-            description = "Ingresos y gastos de los últimos meses. Toca un mes para verlo en detalle.",
+            description = "Ingresos y gastos de los últimos periodos. Toca uno para verlo en detalle.",
         )
     }
 }
@@ -233,15 +263,17 @@ private fun LegendValue(label: String, color: Color, value: String) {
 private fun SummaryCard(snapshot: FinancialSnapshot) {
     val summary = snapshot.summary
     val previous = snapshot.previousSummary
+    val words = snapshot.period.type.words
+    val partial = snapshot.isCurrentPeriod
     WalletCard {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            SummaryMetric("Ingresos", summary.income, previous.income, previous.hasData, higherIsGood = true, partial = snapshot.month == java.time.YearMonth.from(snapshot.today), modifier = Modifier.weight(1f))
-            SummaryMetric("Gastos", summary.expense, previous.expense, previous.hasData, higherIsGood = false, partial = snapshot.month == java.time.YearMonth.from(snapshot.today), modifier = Modifier.weight(1f))
+            SummaryMetric("Ingresos", summary.income, previous.income, previous.hasData, higherIsGood = true, partial = partial, words = words, modifier = Modifier.weight(1f))
+            SummaryMetric("Gastos", summary.expense, previous.expense, previous.hasData, higherIsGood = false, partial = partial, words = words, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(Spacing.lg))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Ahorro del mes", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Ahorro ${words.ofThe}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 MoneyText(
                     summary.savings,
                     style = MaterialTheme.typography.headlineSmall,
@@ -268,16 +300,17 @@ private fun SummaryMetric(
     hasPrevious: Boolean,
     higherIsGood: Boolean,
     partial: Boolean,
+    words: PeriodWords,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MoneyText(current, style = MaterialTheme.typography.titleLarge)
         val change = if (hasPrevious) Percent.change(previous, current) else null
-        // El mes en curso aún no termina: se compara contra el mes anterior completo.
-        val versus = if (partial) "vs. mes anterior completo" else "vs. mes anterior"
+        // El periodo en curso aún no termina: se compara contra el periodo anterior completo.
+        val versus = if (partial) "vs. ${words.previousComplete}" else "vs. ${words.previous.substringAfter(' ')}"
         if (change != null && change.basisPoints == 0L) {
-            Text("Igual que el mes anterior", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Igual que ${words.previous}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else if (change != null) {
             val up = change.basisPoints > 0
             val good = up == higherIsGood
@@ -368,7 +401,7 @@ private fun NecessaryVsOptional(snapshot: FinancialSnapshot) {
         if (optional.total.isPositive) {
             Spacer(Modifier.height(Spacing.md))
             Text(
-                "Este mes has gastado ${formatter.format(optional.total)} en ${optional.count} gastos que marcaste como opcionales.",
+                "${snapshot.period.type.words.current.replaceFirstChar { it.uppercase() }} has gastado ${formatter.format(optional.total)} en ${optional.count} gastos que marcaste como opcionales.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -64,16 +64,19 @@ import com.walletplus.app.core.ui.theme.Motion
 import com.walletplus.app.core.ui.theme.Spacing
 import com.walletplus.app.core.ui.theme.WalletTheme
 import com.walletplus.app.core.ui.theme.tabular
+import com.walletplus.app.presentation.common.periodHeading
+import com.walletplus.app.presentation.common.words
 import com.walletplus.domain.calc.BudgetProgress
 import com.walletplus.domain.calc.GoalProgress
 import com.walletplus.domain.calc.PlanComparison
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.usecase.FinancialSnapshot
 
 /** Qué hoja está abierta en Planificar. */
 sealed interface PlanSheet {
-    data object MonthlyPlan : PlanSheet
+    data object GeneralPlan : PlanSheet
     data class Budget(val progress: BudgetProgress?) : PlanSheet
     data class Goal(val progress: GoalProgress?) : PlanSheet
     data class Contribute(val progress: GoalProgress) : PlanSheet
@@ -83,7 +86,7 @@ sealed interface PlanSheet {
 fun PlanningScreen(contentPadding: PaddingValues, initialTab: Int) {
     val viewModel = walletViewModel { c ->
         PlanningViewModel(
-            c.observeSnapshot, c.saveBudget, c.deleteBudget, c.saveGoal, c.contributeToGoal, c.deleteGoal, c.updatePlan, c.clock,
+            c.observeSnapshot, c.saveBudget, c.deleteBudget, c.saveGoal, c.contributeToGoal, c.deleteGoal, c.updatePlan,
         )
     }
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
@@ -101,7 +104,7 @@ fun PlanningScreen(contentPadding: PaddingValues, initialTab: Int) {
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
-        item { ScreenTitle("Planificar", subtitle = DateFormats.month(current.month, current.today)) }
+        item { ScreenTitle("Planificar", subtitle = periodHeading(current.budgetPeriod, current.today)) }
         item {
             SegmentedControl(
                 options = listOf("Presupuestos", "Metas"),
@@ -123,29 +126,37 @@ fun PlanningScreen(contentPadding: PaddingValues, initialTab: Int) {
     }
 
     when (val open = sheet) {
-        PlanSheet.MonthlyPlan -> MonthlyPlanSheet(current.settings.plan, viewModel::updatePlan, onDismiss = { sheet = null })
+        PlanSheet.GeneralPlan -> PlanSettingsSheet(
+            plan = current.settings.plan,
+            payPeriod = current.settings.payPeriod,
+            hasCategoryBudgets = current.budgets.isNotEmpty(),
+            onSave = viewModel::updatePlan,
+            onDismiss = { sheet = null },
+        )
         is PlanSheet.Budget -> BudgetSheet(
             progress = open.progress,
             categories = viewModel.availableBudgetCategories(current, open.progress?.category?.id),
+            payPeriod = current.settings.payPeriod,
             viewModel = viewModel,
             onDismiss = { sheet = null },
         )
         is PlanSheet.Goal -> GoalSheet(open.progress, current.today, viewModel, onDismiss = { sheet = null })
-        is PlanSheet.Contribute -> ContributeSheet(open.progress, viewModel, onDismiss = { sheet = null })
+        is PlanSheet.Contribute -> ContributeSheet(open.progress, current.settings.payPeriod, viewModel, onDismiss = { sheet = null })
         null -> Unit
     }
 }
 
 @Composable
 private fun BudgetsTab(snapshot: FinancialSnapshot, onOpen: (PlanSheet) -> Unit) {
-    MonthlyPlanCard(snapshot.plan, snapshot.settings.plan.isConfigured) { onOpen(PlanSheet.MonthlyPlan) }
+    val payPeriod = snapshot.settings.payPeriod
+    GeneralPlanCard(snapshot.plan, snapshot.settings.plan.isConfigured, payPeriod) { onOpen(PlanSheet.GeneralPlan) }
     SectionHeader("Por categoría")
     if (snapshot.budgets.isEmpty()) {
         WalletCard {
             EmptyState(
                 emoji = "🎯",
                 title = "Sin presupuestos todavía",
-                message = "Ponle un límite mensual a las categorías que más te importan y te avisaremos al acercarte.",
+                message = "Ponle un límite ${payPeriod.words.adjective} a las categorías que más te importan y te avisaremos al acercarte.",
                 actionLabel = "Crear presupuesto",
                 onAction = { onOpen(PlanSheet.Budget(null)) },
             )
@@ -172,13 +183,14 @@ private fun BudgetsTab(snapshot: FinancialSnapshot, onOpen: (PlanSheet) -> Unit)
 }
 
 @Composable
-private fun MonthlyPlanCard(plan: PlanComparison, configured: Boolean, onEdit: () -> Unit) {
+private fun GeneralPlanCard(plan: PlanComparison, configured: Boolean, payPeriod: PeriodType, onEdit: () -> Unit) {
     WalletCard(onClick = onEdit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Presupuesto general", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    if (configured) "Tu plan frente a lo real este mes" else "Define tu ingreso esperado, gasto máximo y ahorro",
+                    if (configured) "Ciclo ${payPeriod.words.adjective} · tu plan frente a lo real ${payPeriod.words.current}"
+                    else "Elige si cobras por mes o por quincena y define tu ingreso esperado, gasto máximo y ahorro",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -275,6 +287,7 @@ private fun GoalsTab(snapshot: FinancialSnapshot, onOpen: (PlanSheet) -> Unit) {
     snapshot.goals.sortedBy { it.isCompleted }.forEach { progress ->
         GoalCard(
             progress = progress,
+            payPeriod = snapshot.settings.payPeriod,
             onEdit = { onOpen(PlanSheet.Goal(progress)) },
             onContribute = { onOpen(PlanSheet.Contribute(progress)) },
         )
@@ -291,7 +304,7 @@ private fun GoalsTab(snapshot: FinancialSnapshot, onOpen: (PlanSheet) -> Unit) {
 }
 
 @Composable
-private fun GoalCard(progress: GoalProgress, onEdit: () -> Unit, onContribute: () -> Unit) {
+private fun GoalCard(progress: GoalProgress, payPeriod: PeriodType, onEdit: () -> Unit, onContribute: () -> Unit) {
     val formatter = LocalMoneyFormatter.current
     val goal = progress.goal
     val accent = if (progress.isCompleted) WalletTheme.colors.income else MaterialTheme.colorScheme.tertiary
@@ -333,7 +346,9 @@ private fun GoalCard(progress: GoalProgress, onEdit: () -> Unit, onContribute: (
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
                 GoalStat("Te falta", formatter.format(progress.remaining), Modifier.weight(1f))
                 progress.perWeek?.let { GoalStat("Por semana", formatter.format(it), Modifier.weight(1f)) }
-                progress.perMonth?.let { GoalStat("Por mes", formatter.format(it), Modifier.weight(1f)) }
+                // Además de la semana, el ritmo según el ciclo de pago del usuario.
+                val perPayPeriod = if (payPeriod == PeriodType.BIWEEKLY) progress.perFortnight else progress.perMonth
+                perPayPeriod?.let { GoalStat("Por ${payPeriod.words.noun}", formatter.format(it), Modifier.weight(1f)) }
             }
         }
         Spacer(Modifier.height(Spacing.lg))

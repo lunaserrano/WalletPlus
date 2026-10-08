@@ -9,8 +9,8 @@ import com.walletplus.app.data.local.entities.UserSettingsEntity
 import com.walletplus.domain.model.Account
 import com.walletplus.domain.model.Budget
 import com.walletplus.domain.model.Category
-import com.walletplus.domain.model.MonthlyPlan
 import com.walletplus.domain.model.SavingsGoal
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.Transaction
 import com.walletplus.domain.model.UserSettings
 import com.walletplus.domain.money.Money
@@ -118,7 +118,7 @@ fun UserSettingsEntity?.toDomain(): UserSettings {
     return UserSettings(
         currencyCode = currencyCode,
         displayName = displayName,
-        plan = MonthlyPlan(
+        plan = SpendingPlan(
             expectedIncome = Money(expectedIncomeCents),
             spendingLimit = Money(spendingLimitCents),
             savingsTarget = Money(savingsTargetCents),
@@ -127,6 +127,7 @@ fun UserSettingsEntity?.toDomain(): UserSettings {
         demoMode = demoMode,
         lockEnabled = lockEnabled,
         tourCompleted = tourCompleted,
+        payPeriod = payPeriod,
     )
 }
 
@@ -141,6 +142,7 @@ fun UserSettings.toEntity(existing: UserSettingsEntity?) = UserSettingsEntity(
     demoMode = demoMode,
     lockEnabled = lockEnabled,
     tourCompleted = tourCompleted,
+    payPeriod = payPeriod,
     pinHash = existing?.pinHash,
     pinSalt = existing?.pinSalt,
 )

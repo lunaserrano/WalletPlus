@@ -2,8 +2,8 @@ package com.walletplus.domain.calc
 
 import com.walletplus.domain.model.Budget
 import com.walletplus.domain.model.Category
-import com.walletplus.domain.model.MonthlyPlan
 import com.walletplus.domain.model.SavingsGoal
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.Transaction
 import com.walletplus.domain.model.TransactionType
 import com.walletplus.domain.money.Money
@@ -11,10 +11,9 @@ import com.walletplus.domain.money.Percent
 import com.walletplus.domain.money.sumOfMoney
 import com.walletplus.domain.rules.BudgetThresholds
 import com.walletplus.domain.rules.InsightThresholds
+import com.walletplus.domain.time.Period
 import com.walletplus.domain.time.remainingPeriods
-import com.walletplus.domain.time.toDateRange
 import java.time.LocalDate
-import java.time.YearMonth
 
 /** Cálculos financieros puros: sin estado, sin Android y fáciles de probar. */
 object FinanceCalculator {
@@ -27,14 +26,13 @@ object FinanceCalculator {
     fun totalExpense(transactions: List<Transaction>): Money =
         transactions.filter { it.isExpense }.sumOfMoney { it.amount }
 
-    fun monthlySummary(month: YearMonth, transactions: List<Transaction>): MonthlySummary {
-        val range = month.toDateRange()
-        val inMonth = transactions.filter { it.date in range }
-        return MonthlySummary(
-            month = month,
-            income = totalIncome(inMonth),
-            expense = totalExpense(inMonth),
-            transactionCount = inMonth.size,
+    fun periodSummary(period: Period, transactions: List<Transaction>): PeriodSummary {
+        val inPeriod = transactions.filter { it.date in period }
+        return PeriodSummary(
+            period = period,
+            income = totalIncome(inPeriod),
+            expense = totalExpense(inPeriod),
+            transactionCount = inPeriod.size,
         )
     }
 
@@ -95,18 +93,18 @@ object FinanceCalculator {
         )
     }
 
-    /** Progreso de todos los presupuestos aplicables a [month], ordenados por urgencia. */
+    /** Progreso de todos los presupuestos aplicables a [period] (el ciclo de pago), ordenados por urgencia. */
     fun budgetsProgress(
-        month: YearMonth,
+        period: Period,
         budgets: List<Budget>,
         categories: List<Category>,
-        monthTransactions: List<Transaction>,
+        transactions: List<Transaction>,
         thresholds: BudgetThresholds,
     ): List<BudgetProgress> {
         val byId = categories.associateBy { it.id }
-        val spentByCategory = expensesByCategory(monthTransactions.filter { it.date in month.toDateRange() })
+        val spentByCategory = expensesByCategory(transactions.filter { it.date in period })
         return budgets
-            .filter { it.yearMonth == null || it.yearMonth == month }
+            .filter { it.yearMonth == null || it.yearMonth == period.yearMonth }
             .mapNotNull { budget ->
                 val category = byId[budget.categoryId] ?: return@mapNotNull null
                 budgetProgress(budget, category, spentByCategory[budget.categoryId] ?: Money.ZERO, thresholds)
@@ -131,6 +129,7 @@ object FinanceCalculator {
             isOverdue = overdue,
             daysLeft = periods?.days,
             perWeek = periods?.takeIf { !completed }?.let { remaining.divideRoundingUp(it.weeks) },
+            perFortnight = periods?.takeIf { !completed }?.let { remaining.divideRoundingUp(it.fortnights) },
             perMonth = periods?.takeIf { !completed }?.let { remaining.divideRoundingUp(it.months) },
         )
     }
@@ -175,7 +174,7 @@ object FinanceCalculator {
         return SmallExpensesSummary(small.size, total, thresholds.smallExpenseLimit)
     }
 
-    fun planComparison(plan: MonthlyPlan, summary: MonthlySummary): PlanComparison = PlanComparison(
+    fun planComparison(plan: SpendingPlan, summary: PeriodSummary): PlanComparison = PlanComparison(
         expectedIncome = plan.expectedIncome,
         actualIncome = summary.income,
         spendingLimit = plan.spendingLimit,
@@ -184,9 +183,9 @@ object FinanceCalculator {
         actualSavings = summary.savings,
     )
 
-    fun monthlyTrend(months: List<YearMonth>, transactions: List<Transaction>): List<MonthTrendPoint> =
-        months.map { month ->
-            val summary = monthlySummary(month, transactions)
-            MonthTrendPoint(month, summary.income, summary.expense)
+    fun trend(periods: List<Period>, transactions: List<Transaction>): List<TrendPoint> =
+        periods.map { period ->
+            val summary = periodSummary(period, transactions)
+            TrendPoint(period, summary.income, summary.expense)
         }
 }

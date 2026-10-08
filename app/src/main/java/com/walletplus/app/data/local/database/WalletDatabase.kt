@@ -25,6 +25,7 @@ import com.walletplus.app.data.local.entities.TransactionEntity
 import com.walletplus.app.data.local.entities.UserSettingsEntity
 import com.walletplus.domain.model.DefaultCategories
 import com.walletplus.domain.model.UserSettings
+import com.walletplus.domain.time.PeriodType
 
 @Database(
     entities = [
@@ -36,7 +37,7 @@ import com.walletplus.domain.model.UserSettings
         UserSettingsEntity::class,
         RecurringTransactionEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -59,9 +60,16 @@ abstract class WalletDatabase : RoomDatabase() {
             }
         }
 
+        /** v3: ciclo de pago (mensual o quincenal) para presupuestos y plan. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_settings ADD COLUMN pay_period TEXT NOT NULL DEFAULT 'MONTHLY'")
+            }
+        }
+
         fun build(context: Context): WalletDatabase =
             Room.databaseBuilder(context, WalletDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(SeedCallback)
                 .build()
 
@@ -98,6 +106,7 @@ abstract class WalletDatabase : RoomDatabase() {
                 put("demo_mode", 0)
                 put("lock_enabled", 0)
                 put("tour_completed", 0)
+                put("pay_period", PeriodType.MONTHLY.name)
                 putNull("pin_hash")
                 putNull("pin_salt")
             }

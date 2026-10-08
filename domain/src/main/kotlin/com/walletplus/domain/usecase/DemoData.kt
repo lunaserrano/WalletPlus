@@ -2,9 +2,9 @@ package com.walletplus.domain.usecase
 
 import com.walletplus.domain.model.Account
 import com.walletplus.domain.model.Budget
-import com.walletplus.domain.model.MonthlyPlan
 import com.walletplus.domain.model.PaymentMethod
 import com.walletplus.domain.model.SavingsGoal
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.Transaction
 import com.walletplus.domain.model.TransactionType
 import com.walletplus.domain.money.Money
@@ -15,6 +15,7 @@ import com.walletplus.domain.repository.DataStoreMaintenance
 import com.walletplus.domain.repository.GoalRepository
 import com.walletplus.domain.repository.SettingsRepository
 import com.walletplus.domain.repository.TransactionRepository
+import com.walletplus.domain.time.PeriodType
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -166,7 +167,9 @@ class LoadDemoDataUseCase(
                 it.copy(
                     onboardingCompleted = true,
                     demoMode = true,
-                    plan = MonthlyPlan(
+                    // Los montos de demostración son mensuales.
+                    payPeriod = PeriodType.MONTHLY,
+                    plan = SpendingPlan(
                         expectedIncome = Money.ofUnits(1_200),
                         spendingLimit = Money.ofUnits(800),
                         savingsTarget = Money.ofUnits(400),

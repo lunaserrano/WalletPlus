@@ -6,12 +6,12 @@ Los datos nunca salen del dispositivo: la app no pide permiso de Internet, no ti
 
 ## Funcionalidades (Fase 1)
 
-- **Dashboard**: saldo actual, ingresos y gastos del mes, capacidad y porcentaje de ahorro, presupuesto general, distribución de gastos, meta destacada y recomendación principal.
+- **Dashboard**: saldo actual, ingresos y gastos del ciclo de pago (mes o quincena), capacidad y porcentaje de ahorro, presupuesto general, distribución de gastos, meta destacada y recomendación principal.
 - **Registro rápido**: una sola hoja con teclado numérico propio, categoría preseleccionada, fecha, método de pago y "¿Es necesario?". Se puede deshacer al guardar o eliminar.
 - **Historial**: agrupado por día, con búsqueda (descripción, notas, categoría) y filtros por tipo, fecha, categoría y método. Deslizar para eliminar.
-- **Presupuestos**: general (ingreso esperado / gasto máximo / ahorro objetivo) y por categoría, con estados Normal, Precaución, Alto y Excedido.
-- **Metas de ahorro**: progreso, monto restante y ahorro recomendado por semana y por mes.
-- **Análisis**: tendencia de 6 meses, distribución por categoría, necesario vs. opcional, comparación con el mes anterior y gastos pequeños frecuentes.
+- **Presupuestos**: general (ingreso esperado / gasto máximo / ahorro objetivo) y por categoría, con estados Normal, Precaución, Alto y Excedido. Se miden por mes o por quincena (del 1 al 15 y del 16 a fin de mes) según el ciclo de pago elegido; al cambiarlo, los montos se convierten (un mes = dos quincenas).
+- **Metas de ahorro**: progreso, monto restante y ahorro recomendado por semana y por mes o quincena.
+- **Análisis**: vista semanal, quincenal o mensual (por defecto, el ciclo de pago), tendencia de los últimos 6 periodos, distribución por categoría, necesario vs. opcional, comparación con el periodo anterior y gastos pequeños frecuentes.
 - **Recomendaciones** por reglas locales (sin IA externa), con tono educativo.
 - **Ajustes**: moneda, saldo inicial, categorías (crear, editar, desactivar), bloqueo con PIN, datos de demostración y borrado.
 

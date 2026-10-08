@@ -2,9 +2,10 @@ package com.walletplus.app.presentation.planning
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.walletplus.domain.model.MonthlyPlan
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.TransactionType
 import com.walletplus.domain.money.Money
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.usecase.ContributeToGoalUseCase
 import com.walletplus.domain.usecase.DeleteBudgetUseCase
 import com.walletplus.domain.usecase.DeleteGoalUseCase
@@ -12,7 +13,7 @@ import com.walletplus.domain.usecase.FinancialSnapshot
 import com.walletplus.domain.usecase.ObserveFinancialSnapshot
 import com.walletplus.domain.usecase.SaveBudgetUseCase
 import com.walletplus.domain.usecase.SaveGoalUseCase
-import com.walletplus.domain.usecase.UpdateMonthlyPlanUseCase
+import com.walletplus.domain.usecase.UpdatePlanUseCase
 import com.walletplus.domain.validation.BudgetError
 import com.walletplus.domain.validation.GoalError
 import com.walletplus.domain.validation.Outcome
@@ -20,9 +21,7 @@ import com.walletplus.domain.validation.SettingsError
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import java.time.Clock
 import java.time.LocalDate
-import java.time.YearMonth
 
 class PlanningViewModel(
     observeSnapshot: ObserveFinancialSnapshot,
@@ -31,11 +30,11 @@ class PlanningViewModel(
     private val saveGoal: SaveGoalUseCase,
     private val contribute: ContributeToGoalUseCase,
     private val deleteGoal: DeleteGoalUseCase,
-    private val updatePlan: UpdateMonthlyPlanUseCase,
-    clock: Clock,
+    private val updatePlan: UpdatePlanUseCase,
 ) : ViewModel() {
 
-    val snapshot: StateFlow<FinancialSnapshot?> = observeSnapshot(YearMonth.now(clock))
+    /** Ciclo de pago en curso: presupuestos y plan se miden por mes o por quincena. */
+    val snapshot: StateFlow<FinancialSnapshot?> = observeSnapshot()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Categorías de gasto activas que aún no tienen presupuesto. */
@@ -60,5 +59,6 @@ class PlanningViewModel(
     suspend fun contribute(goalId: Long, amount: Money?, deposit: Boolean) = contribute.invoke(goalId, amount, deposit)
     suspend fun deleteGoal(id: Long) = deleteGoal.invoke(id)
 
-    suspend fun updatePlan(plan: MonthlyPlan): Outcome<Unit, SettingsError> = updatePlan.invoke(plan)
+    suspend fun updatePlan(plan: SpendingPlan, payPeriod: PeriodType): Outcome<Unit, SettingsError> =
+        updatePlan.invoke(plan, payPeriod)
 }

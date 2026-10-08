@@ -39,7 +39,7 @@ val FirstUseTourSteps = listOf(
     TourStep(
         targetId = TourIds.BALANCE,
         title = "Tu saldo, siempre al día",
-        body = "Se calcula solo: saldo inicial + ingresos − gastos. Aquí también ves cuánto entró y salió este mes.",
+        body = "Se calcula solo: saldo inicial + ingresos − gastos. Aquí también ves cuánto entró y salió en tu mes o quincena.",
         icon = Icons.Rounded.AccountBalanceWallet,
         corner = 38.dp,
     ),
@@ -59,13 +59,13 @@ val FirstUseTourSteps = listOf(
     TourStep(
         targetId = TourIds.PLAN,
         title = "Presupuestos y metas",
-        body = "Pon límites mensuales por categoría y te avisaremos al acercarte. Crea metas y te diremos cuánto apartar por semana.",
+        body = "Elige si cobras por mes o por quincena, pon límites por categoría y te avisaremos al acercarte. Crea metas y te diremos cuánto apartar por semana.",
         icon = Icons.Rounded.TrackChanges,
     ),
     TourStep(
         targetId = TourIds.ANALYSIS,
         title = "Entiende tus hábitos",
-        body = "Descubre en qué gastas, qué parte es opcional y cómo vas frente al mes anterior, con sugerencias para ahorrar.",
+        body = "Descubre en qué gastas, qué parte es opcional y cómo vas por semana, quincena o mes, con sugerencias para ahorrar.",
         icon = Icons.Rounded.Insights,
     ),
     TourStep(

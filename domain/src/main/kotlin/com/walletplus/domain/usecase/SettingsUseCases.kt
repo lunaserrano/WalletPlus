@@ -1,12 +1,14 @@
 package com.walletplus.domain.usecase
 
 import com.walletplus.domain.model.Account
-import com.walletplus.domain.model.MonthlyPlan
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.UserSettings
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.repository.AccountRepository
+import com.walletplus.domain.repository.BudgetRepository
 import com.walletplus.domain.repository.DataStoreMaintenance
 import com.walletplus.domain.repository.SettingsRepository
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.validation.Outcome
 import com.walletplus.domain.validation.SettingsError
 import java.time.Clock
@@ -77,13 +79,38 @@ class UpdateAccountUseCase(
     }
 }
 
-class UpdateMonthlyPlanUseCase(private val settings: SettingsRepository) {
-    suspend operator fun invoke(plan: MonthlyPlan): Outcome<Unit, SettingsError> {
+class UpdatePlanUseCase(
+    private val settings: SettingsRepository,
+    private val budgets: BudgetRepository,
+    private val maintenance: DataStoreMaintenance,
+) {
+    /**
+     * Guarda el plan general y el ciclo de pago. Los montos de [plan] ya vienen expresados en [payPeriod];
+     * si el ciclo cambia, los presupuestos por categoría se convierten (mensual ÷ 2 = quincenal).
+     */
+    suspend operator fun invoke(plan: SpendingPlan, payPeriod: PeriodType): Outcome<Unit, SettingsError> {
+        require(payPeriod.isPayPeriod) { "El ciclo de pago debe ser mensual o quincenal" }
         val values = listOf(plan.expectedIncome, plan.spendingLimit, plan.savingsTarget)
         if (values.any { it.isNegative }) return Outcome.Invalid(setOf(SettingsError.VALUE_NEGATIVE))
-        settings.update { it.copy(plan = plan) }
+        maintenance.atomically {
+            val previous = settings.get().payPeriod
+            if (previous != payPeriod) {
+                budgets.getAll().forEach { budget ->
+                    budgets.save(budget.copy(limit = convertBetweenPayPeriods(budget.limit, previous, payPeriod)))
+                }
+            }
+            settings.update { it.copy(plan = plan, payPeriod = payPeriod) }
+        }
         return Outcome.Success(Unit)
     }
+}
+
+/** Convierte un monto entre ciclos de pago: un mes equivale a dos quincenas (al dividir se redondea hacia arriba). */
+fun convertBetweenPayPeriods(amount: Money, from: PeriodType, to: PeriodType): Money = when {
+    from == to -> amount
+    from == PeriodType.MONTHLY && to == PeriodType.BIWEEKLY -> amount.divideRoundingUp(2)
+    from == PeriodType.BIWEEKLY && to == PeriodType.MONTHLY -> amount * 2
+    else -> throw IllegalArgumentException("Conversión no soportada: $from → $to")
 }
 
 class UpdatePreferencesUseCase(

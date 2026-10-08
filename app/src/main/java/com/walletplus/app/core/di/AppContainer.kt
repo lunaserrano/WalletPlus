@@ -24,7 +24,7 @@ import com.walletplus.domain.usecase.DeleteGoalUseCase
 import com.walletplus.domain.usecase.DeleteTransactionUseCase
 import com.walletplus.domain.usecase.LoadDemoDataUseCase
 import com.walletplus.domain.usecase.ObserveFinancialSnapshot
-import com.walletplus.domain.usecase.ObserveMonthlyTrend
+import com.walletplus.domain.usecase.ObserveTrend
 import com.walletplus.domain.usecase.RemoveCategoryUseCase
 import com.walletplus.domain.usecase.ResetAllDataUseCase
 import com.walletplus.domain.usecase.RestoreTransactionUseCase
@@ -34,7 +34,7 @@ import com.walletplus.domain.usecase.SaveGoalUseCase
 import com.walletplus.domain.usecase.SaveTransactionUseCase
 import com.walletplus.domain.usecase.SetCategoryActiveUseCase
 import com.walletplus.domain.usecase.UpdateAccountUseCase
-import com.walletplus.domain.usecase.UpdateMonthlyPlanUseCase
+import com.walletplus.domain.usecase.UpdatePlanUseCase
 import com.walletplus.domain.usecase.UpdatePreferencesUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +64,7 @@ class AppContainer(context: Context) {
     val appLock = AppLockManager(database.settingsDao())
 
     val observeSnapshot = ObserveFinancialSnapshot(accounts, transactions, categories, budgets, goals, settings, clock)
-    val observeTrend = ObserveMonthlyTrend(transactions)
+    val observeTrend = ObserveTrend(transactions, clock)
 
     val saveTransaction = SaveTransactionUseCase(transactions, categories, accounts, clock)
     val deleteTransaction = DeleteTransactionUseCase(transactions)
@@ -83,7 +83,7 @@ class AppContainer(context: Context) {
 
     val completeOnboarding = CompleteOnboardingUseCase(accounts, settings, maintenance, clock)
     val updateAccount = UpdateAccountUseCase(accounts, clock)
-    val updatePlan = UpdateMonthlyPlanUseCase(settings)
+    val updatePlan = UpdatePlanUseCase(settings, budgets, maintenance)
     val updatePreferences = UpdatePreferencesUseCase(settings, accounts)
     val loadDemoData = LoadDemoDataUseCase(maintenance, accounts, categories, transactions, budgets, goals, settings, clock)
     val resetAllData = ResetAllDataUseCase(maintenance, settings)

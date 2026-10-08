@@ -3,6 +3,8 @@ package com.walletplus.app.core.format
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
+import com.walletplus.domain.time.Period
+import com.walletplus.domain.time.PeriodType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -109,6 +111,33 @@ object DateFormats {
     fun monthShort(month: YearMonth): String =
         month.month.getDisplayName(TextStyle.SHORT_STANDALONE, SpanishLocale).trimEnd('.')
             .replaceFirstChar { it.titlecase(SpanishLocale) }
+
+    /** "Octubre", "1–15 oct" o "29 sep – 5 oct" (con año si no es el actual). */
+    fun period(period: Period, today: LocalDate = LocalDate.now()): String =
+        if (period.type == PeriodType.MONTHLY) month(period.yearMonth, today) else dayRange(period, today)
+
+    /** Versión compacta para encabezados: "Oct", "1–15 oct", "12–18 oct". */
+    fun periodShort(period: Period, today: LocalDate = LocalDate.now()): String =
+        if (period.type == PeriodType.MONTHLY) {
+            monthShort(period.yearMonth) + if (period.yearMonth.year != today.year) " ${period.yearMonth.year % 100}" else ""
+        } else {
+            dayRange(period, today)
+        }
+
+    /** Etiqueta de eje para gráficos: "Oct" o el día de inicio ("16 oct"). */
+    fun periodTick(period: Period): String =
+        if (period.type == PeriodType.MONTHLY) monthShort(period.yearMonth) else dayMonth.format(period.start).clean()
+
+    private fun dayRange(period: Period, today: LocalDate): String {
+        val start = period.start
+        val end = period.end
+        val text = if (start.month == end.month) {
+            "${start.dayOfMonth}–${dayMonth.format(end).clean()}"
+        } else {
+            "${dayMonth.format(start).clean()} – ${dayMonth.format(end).clean()}"
+        }
+        return if (end.year == today.year) text else "$text ${end.year}"
+    }
 
     private fun String.clean() = replace(".", "")
 }

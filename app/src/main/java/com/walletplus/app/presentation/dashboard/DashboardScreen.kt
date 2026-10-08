@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,6 +71,8 @@ import com.walletplus.app.core.ui.theme.WalletTheme
 import com.walletplus.app.core.ui.theme.tabular
 import com.walletplus.app.presentation.common.InsightCard
 import com.walletplus.app.presentation.common.TransactionRow
+import com.walletplus.app.presentation.common.periodHeading
+import com.walletplus.app.presentation.common.words
 import com.walletplus.app.presentation.tour.TourIds
 import com.walletplus.app.presentation.tour.tourTarget
 import com.walletplus.domain.calc.CategoryShare
@@ -79,8 +82,8 @@ import com.walletplus.domain.model.TransactionType
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
 import com.walletplus.domain.money.sumOfMoney
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.usecase.FinancialSnapshot
-import androidx.compose.foundation.isSystemInDarkTheme
 
 @Composable
 fun DashboardScreen(
@@ -123,7 +126,7 @@ private fun DashboardContent(
     onOpenSettings: () -> Unit,
 ) {
     val categoriesById = remember(snapshot.categories) { snapshot.categories.associateBy { it.id } }
-    val hasMonthData = snapshot.summary.hasData
+    val hasPeriodData = snapshot.summary.hasData
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -160,7 +163,7 @@ private fun DashboardContent(
         // 2-3. Saldo, ingresos y gastos
         item(key = "balance") { Reveal(0) { BalanceHero(snapshot) } }
 
-        if (!hasMonthData && snapshot.totals.income.isZero && snapshot.totals.expense.isZero) {
+        if (!hasPeriodData && snapshot.totals.income.isZero && snapshot.totals.expense.isZero) {
             item(key = "empty") {
                 WalletCard {
                     EmptyState(
@@ -179,7 +182,9 @@ private fun DashboardContent(
         item(key = "savings") { Reveal(1) { SavingsCard(snapshot) } }
 
         // 5. Presupuesto general
-        item(key = "plan") { Reveal(2) { PlanCard(snapshot.plan, snapshot.settings.plan.isConfigured) { onOpenPlan(0) } } }
+        item(key = "plan") {
+            Reveal(2) { PlanCard(snapshot.plan, snapshot.settings.plan.isConfigured, snapshot.budgetPeriod.type) { onOpenPlan(0) } }
+        }
 
         // 6. Distribución de gastos
         if (snapshot.distribution.isNotEmpty()) {
@@ -209,7 +214,7 @@ private fun LazyListScope.recentTransactions(
     onEdit: (Long) -> Unit,
     onOpenAll: () -> Unit,
 ) {
-    val recent = snapshot.monthTransactions.take(5)
+    val recent = snapshot.periodTransactions.take(5)
     if (recent.isEmpty()) return
     item(key = "recent-header") { SectionHeader("Movimientos recientes", action = "Ver todo", onAction = onOpenAll) }
     item(key = "recent") {
@@ -264,7 +269,7 @@ private fun BalanceHero(snapshot: FinancialSnapshot) {
             )
             Spacer(Modifier.height(Spacing.xl))
             Text(
-                DateFormats.month(snapshot.month, snapshot.today),
+                periodHeading(snapshot.period, snapshot.today),
                 style = MaterialTheme.typography.labelMedium,
                 color = colors.onHeroMuted,
             )
@@ -321,6 +326,7 @@ private fun SavingsCard(snapshot: FinancialSnapshot) {
     val rate = summary.savingsRate
     val positive = !summary.savings.isNegative
     val accent = if (positive) WalletTheme.colors.income else WalletTheme.colors.expense
+    val words = snapshot.period.type.words
     WalletCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -331,8 +337,8 @@ private fun SavingsCard(snapshot: FinancialSnapshot) {
                 Text(
                     when {
                         rate == null -> "Registra tus ingresos para calcular tu ahorro."
-                        positive -> "Has ahorrado el ${PercentFormat.format(rate)} de tus ingresos este mes."
-                        else -> "Este mes gastas más de lo que ingresas."
+                        positive -> "Has ahorrado el ${PercentFormat.format(rate)} de tus ingresos ${words.current}."
+                        else -> "${words.current.replaceFirstChar { it.uppercase() }} gastas más de lo que ingresas."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -365,16 +371,17 @@ private fun RingProgress(fraction: Float, color: Color, label: String) {
 }
 
 @Composable
-private fun PlanCard(plan: PlanComparison, configured: Boolean, onOpen: () -> Unit) {
+private fun PlanCard(plan: PlanComparison, configured: Boolean, payPeriod: PeriodType, onOpen: () -> Unit) {
+    val words = payPeriod.words
     WalletCard(onClick = onOpen) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Presupuesto del mes", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text("Presupuesto ${words.ofThe}", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
             Icon(Icons.Rounded.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.height(Spacing.md))
         if (!configured || !plan.spendingLimit.isPositive) {
             Text(
-                "Define cuánto quieres gastar y ahorrar cada mes para comparar tu plan con la realidad.",
+                "Define cuánto quieres gastar y ahorrar cada ${words.noun} para comparar tu plan con la realidad.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -404,7 +411,7 @@ private fun PlanCard(plan: PlanComparison, configured: Boolean, onOpen: () -> Un
         Spacer(Modifier.height(Spacing.sm))
         Text(
             if (remaining.isNegative) "Superaste tu límite por ${LocalMoneyFormatter.current.format(remaining.abs())}"
-            else "Te quedan ${LocalMoneyFormatter.current.format(remaining)} para gastar este mes",
+            else "Te quedan ${LocalMoneyFormatter.current.format(remaining)} para gastar ${words.current}",
             style = MaterialTheme.typography.bodySmall,
             color = if (remaining.isNegative) WalletTheme.colors.exceeded else MaterialTheme.colorScheme.onSurfaceVariant,
         )

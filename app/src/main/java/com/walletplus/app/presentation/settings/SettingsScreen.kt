@@ -23,8 +23,8 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Person
@@ -70,8 +70,9 @@ import com.walletplus.app.core.ui.components.WalletDatePickerDialog
 import com.walletplus.app.core.ui.components.WalletSheet
 import com.walletplus.app.core.ui.components.walletFieldColors
 import com.walletplus.app.core.ui.theme.Spacing
+import com.walletplus.app.presentation.common.label
 import com.walletplus.app.presentation.common.message
-import com.walletplus.app.presentation.planning.MonthlyPlanSheet
+import com.walletplus.app.presentation.planning.PlanSettingsSheet
 import com.walletplus.app.presentation.transactions.AmountInput
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.validation.Outcome
@@ -85,7 +86,7 @@ private enum class Confirm { DEMO, RESET }
 fun SettingsScreen(onBack: () -> Unit, onReplayTour: () -> Unit, onOpenCategories: () -> Unit) {
     val viewModel = walletViewModel { c ->
         SettingsViewModel(
-            c.settings, c.accounts, c.updatePreferences, c.updateAccount, c.updatePlan,
+            c.settings, c.accounts, c.budgets, c.updatePreferences, c.updateAccount, c.updatePlan,
             c.loadDemoData, c.resetAllData, c.appLock, c.clock,
         )
     }
@@ -132,8 +133,9 @@ fun SettingsScreen(onBack: () -> Unit, onReplayTour: () -> Unit, onOpenCategorie
             SettingRow(
                 Icons.Rounded.Tune,
                 "Presupuesto general",
-                if (settings.plan.isConfigured) "Gastos máx. ${formatter.format(settings.plan.spendingLimit)} · ahorro ${formatter.format(settings.plan.savingsTarget)}"
-                else "Ingreso esperado, gasto máximo y ahorro",
+                settings.payPeriod.label() + " · " +
+                    if (settings.plan.isConfigured) "gastos máx. ${formatter.format(settings.plan.spendingLimit)} · ahorro ${formatter.format(settings.plan.savingsTarget)}"
+                    else "ingreso esperado, gasto máximo y ahorro",
             ) { sheet = SettingsSheet.PLAN }
             SettingRow(Icons.Rounded.Category, "Categorías", "Crear, editar o desactivar", onClick = onOpenCategories)
         }
@@ -216,7 +218,13 @@ fun SettingsScreen(onBack: () -> Unit, onReplayTour: () -> Unit, onOpenCategorie
         SettingsSheet.ACCOUNT -> current.account?.let { account ->
             AccountSheet(account.initialBalance, account.startDate, current.today, viewModel, onDismiss = { sheet = null })
         }
-        SettingsSheet.PLAN -> MonthlyPlanSheet(settings.plan, viewModel::savePlan, onDismiss = { sheet = null })
+        SettingsSheet.PLAN -> PlanSettingsSheet(
+            plan = settings.plan,
+            payPeriod = settings.payPeriod,
+            hasCategoryBudgets = current.hasBudgets,
+            onSave = viewModel::savePlan,
+            onDismiss = { sheet = null },
+        )
         SettingsSheet.PIN -> PinSetupSheet(onDismiss = { sheet = null }) { pin ->
             scope.launch {
                 viewModel.setPin(pin)

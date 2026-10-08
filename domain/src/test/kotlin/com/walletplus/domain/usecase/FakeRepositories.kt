@@ -78,6 +78,7 @@ class FakeTransactions : TransactionRepository {
 class FakeBudgets : BudgetRepository {
     val state = MutableStateFlow<List<Budget>>(emptyList())
     override fun observeAll(): Flow<List<Budget>> = state
+    override suspend fun getAll(): List<Budget> = state.value
     override suspend fun getByCategory(categoryId: Long): Budget? = state.value.firstOrNull { it.categoryId == categoryId }
     override suspend fun save(budget: Budget): Long {
         val id = if (budget.id == 0L) (state.value.maxOfOrNull { it.id } ?: 0) + 1 else budget.id

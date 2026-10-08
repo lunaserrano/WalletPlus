@@ -7,25 +7,29 @@ import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.ReportProblem
+import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material3.MaterialTheme
+import com.walletplus.app.core.format.DateFormats
 import com.walletplus.app.core.format.MoneyFormatter
 import com.walletplus.app.core.format.PercentFormat
 import com.walletplus.app.core.ui.theme.WalletTheme
 import com.walletplus.domain.insights.Insight
 import com.walletplus.domain.insights.InsightTone
 import com.walletplus.domain.model.PaymentMethod
+import com.walletplus.domain.time.Period
+import com.walletplus.domain.time.PeriodType
 import com.walletplus.domain.validation.BudgetError
 import com.walletplus.domain.validation.CategoryError
 import com.walletplus.domain.validation.GoalError
 import com.walletplus.domain.validation.SettingsError
 import com.walletplus.domain.validation.TransactionError
+import java.time.LocalDate
 
 fun PaymentMethod.label(): String = when (this) {
     PaymentMethod.CASH -> "Efectivo"
@@ -93,6 +97,57 @@ fun SettingsError.message(): String = when (this) {
     SettingsError.CURRENCY_INVALID -> "Moneda no válida"
 }
 
+/** Frases para hablar de un periodo con la concordancia correcta ("este mes", "esta quincena"). */
+data class PeriodWords(
+    /** "mes" */
+    val noun: String,
+    /** "el mes" */
+    val the: String,
+    /** "este mes" */
+    val current: String,
+    /** "del mes" */
+    val ofThe: String,
+    /** "por mes" */
+    val per: String,
+    /** "mensual" */
+    val adjective: String,
+    /** "el mes anterior" */
+    val previous: String,
+    /** "al mes anterior" */
+    val toPrevious: String,
+    /** "mes anterior completo" */
+    val previousComplete: String,
+    /** "hasta fin de mes" */
+    val untilEnd: String,
+)
+
+val PeriodType.words: PeriodWords
+    get() = when (this) {
+        PeriodType.WEEKLY -> PeriodWords(
+            noun = "semana", the = "la semana", current = "esta semana", ofThe = "de la semana", per = "por semana",
+            adjective = "semanal", previous = "la semana anterior", toPrevious = "a la semana anterior",
+            previousComplete = "semana anterior completa", untilEnd = "hasta que termine la semana",
+        )
+        PeriodType.BIWEEKLY -> PeriodWords(
+            noun = "quincena", the = "la quincena", current = "esta quincena", ofThe = "de la quincena", per = "por quincena",
+            adjective = "quincenal", previous = "la quincena anterior", toPrevious = "a la quincena anterior",
+            previousComplete = "quincena anterior completa", untilEnd = "hasta tu próximo pago",
+        )
+        PeriodType.MONTHLY -> PeriodWords(
+            noun = "mes", the = "el mes", current = "este mes", ofThe = "del mes", per = "por mes",
+            adjective = "mensual", previous = "el mes anterior", toPrevious = "al mes anterior",
+            previousComplete = "mes anterior completo", untilEnd = "hasta fin de mes",
+        )
+    }
+
+/** "Octubre", "Quincena · 1–15 oct" o "Semana · 12–18 oct". */
+fun periodHeading(period: Period, today: LocalDate): String =
+    if (period.type == PeriodType.MONTHLY) DateFormats.period(period, today)
+    else "${period.type.words.noun.replaceFirstChar { it.uppercase() }} · ${DateFormats.period(period, today)}"
+
+/** "Semanal", "Quincenal" o "Mensual". */
+fun PeriodType.label(): String = words.adjective.replaceFirstChar { it.uppercase() }
+
 data class InsightCopy(val title: String, val body: String)
 
 /**
@@ -105,22 +160,22 @@ fun Insight.copy(money: MoneyFormatter): InsightCopy = when (this) {
         "Has superado el presupuesto de ${category.name}: llevas ${money.format(spent)} de ${money.format(limit)}. " +
             "Podrías revisar los próximos gastos de esta categoría.",
     )
-    is Insight.MonthOverspent -> InsightCopy(
+    is Insight.PeriodOverspent -> InsightCopy(
         "Gastos por encima de tus ingresos",
-        "Según tus registros, este mes has gastado ${money.format(expense)} frente a ${money.format(income)} de ingresos. " +
-            "Una posible oportunidad es pausar gastos opcionales hasta fin de mes.",
+        "Según tus registros, ${period.words.current} has gastado ${money.format(expense)} frente a ${money.format(income)} de ingresos. " +
+            "Una posible oportunidad es pausar gastos opcionales ${period.words.untilEnd}.",
     )
     is Insight.PlanSpendingExceeded -> InsightCopy(
-        "Límite mensual superado",
-        "Tus gastos (${money.format(spent)}) superan el máximo que definiste para el mes (${money.format(limit)}).",
+        "Límite ${period.words.adjective} superado",
+        "Tus gastos (${money.format(spent)}) superan el máximo que definiste para ${period.words.the} (${money.format(limit)}).",
     )
     is Insight.BudgetNearLimit -> InsightCopy(
         "${category.name} cerca del límite",
-        "Has usado el ${PercentFormat.format(percent)} del presupuesto. Te quedan ${money.format(remaining.coerceAtLeast(com.walletplus.domain.money.Money.ZERO))} para el resto del mes.",
+        "Has usado el ${PercentFormat.format(percent)} del presupuesto. Te quedan ${money.format(remaining.coerceAtLeast(com.walletplus.domain.money.Money.ZERO))} para el resto ${period.words.ofThe}.",
     )
     is Insight.CategoryIncreased -> InsightCopy(
         "${category.name} aumentó ${PercentFormat.format(change)}",
-        "Tu gasto en ${category.name} pasó de ${money.format(previous)} a ${money.format(current)} respecto al mes anterior.",
+        "Tu gasto en ${category.name} pasó de ${money.format(previous)} a ${money.format(current)} respecto ${period.words.toPrevious}.",
     )
     is Insight.HighOptionalSpending -> InsightCopy(
         "Gastos opcionales: ${PercentFormat.format(share)}",
@@ -129,24 +184,24 @@ fun Insight.copy(money: MoneyFormatter): InsightCopy = when (this) {
     )
     is Insight.SmallExpensesAddUp -> InsightCopy(
         "Los gastos pequeños suman",
-        "Según tus registros, $count gastos menores de ${money.format(limit, showCents = false)} representan ${money.format(total)} este mes.",
+        "Según tus registros, $count gastos menores de ${money.format(limit, showCents = false)} representan ${money.format(total)} ${period.words.current}.",
     )
     is Insight.GoalPace -> InsightCopy(
         "Ritmo para \"$goalName\"",
-        "Reservando ${money.format(perWeek)} por semana podrías alcanzar tu meta a tiempo. Te faltan ${money.format(remaining)}.",
+        "Reservando ${money.format(amount)} ${period.words.per} podrías alcanzar tu meta a tiempo. Te faltan ${money.format(remaining)}.",
     )
     is Insight.TopCategory -> InsightCopy(
         "Tu mayor gasto: ${category.name}",
-        "Tu categoría con mayor gasto este mes es ${category.name}, con ${money.format(amount)} (${PercentFormat.format(share)} del total).",
+        "Tu categoría con mayor gasto ${period.words.current} es ${category.name}, con ${money.format(amount)} (${PercentFormat.format(share)} del total).",
     )
     is Insight.OptionalSpendingSummary -> InsightCopy(
         "Gastos opcionales bajo control",
-        "Este mes has gastado ${money.format(total)} en gastos que marcaste como opcionales" +
+        "${period.words.current.replaceFirstChar { it.uppercase() }} has gastado ${money.format(total)} en gastos que marcaste como opcionales" +
             (share?.let { " (${PercentFormat.format(it)} del total)." } ?: "."),
     )
     is Insight.SavingsRate -> InsightCopy(
         "Estás ahorrando ${PercentFormat.format(rate)}",
-        "Tu porcentaje de ahorro actual es ${PercentFormat.format(rate)} de tus ingresos: ${money.format(savings)} este mes. ¡Buen trabajo!",
+        "Tu porcentaje de ahorro actual es ${PercentFormat.format(rate)} de tus ingresos: ${money.format(savings)} ${period.words.current}. ¡Buen trabajo!",
     )
 }
 

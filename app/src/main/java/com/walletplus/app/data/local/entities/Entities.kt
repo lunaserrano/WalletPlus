@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import com.walletplus.domain.model.PaymentMethod
 import com.walletplus.domain.model.RecurrenceFrequency
 import com.walletplus.domain.model.TransactionType
+import com.walletplus.domain.time.PeriodType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -117,6 +118,7 @@ data class UserSettingsEntity(
     @ColumnInfo(name = "demo_mode") val demoMode: Boolean,
     @ColumnInfo(name = "lock_enabled") val lockEnabled: Boolean,
     @ColumnInfo(name = "tour_completed", defaultValue = "0") val tourCompleted: Boolean = false,
+    @ColumnInfo(name = "pay_period", defaultValue = "'MONTHLY'") val payPeriod: PeriodType = PeriodType.MONTHLY,
     /** Hash PBKDF2 del PIN (nunca el PIN en texto plano). */
     @ColumnInfo(name = "pin_hash") val pinHash: String?,
     @ColumnInfo(name = "pin_salt") val pinSalt: String?,

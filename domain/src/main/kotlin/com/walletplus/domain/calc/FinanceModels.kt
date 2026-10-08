@@ -5,15 +5,15 @@ import com.walletplus.domain.model.Category
 import com.walletplus.domain.model.SavingsGoal
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
-import java.time.YearMonth
+import com.walletplus.domain.time.Period
 
-data class MonthlySummary(
-    val month: YearMonth,
+data class PeriodSummary(
+    val period: Period,
     val income: Money,
     val expense: Money,
     val transactionCount: Int,
 ) {
-    /** Capacidad de ahorro del mes: ingresos − gastos (puede ser negativa). */
+    /** Capacidad de ahorro del periodo: ingresos − gastos (puede ser negativa). */
     val savings: Money get() = income - expense
 
     /** Porcentaje ahorrado sobre los ingresos; null si no hubo ingresos. */
@@ -51,6 +51,7 @@ data class GoalProgress(
     val isOverdue: Boolean,
     val daysLeft: Long?,
     val perWeek: Money?,
+    val perFortnight: Money?,
     val perMonth: Money?,
 )
 
@@ -58,7 +59,7 @@ data class CategoryChange(
     val category: Category,
     val previous: Money,
     val current: Money,
-    /** Null si el mes anterior no tiene base suficiente para comparar. */
+    /** Null si el periodo anterior no tiene base suficiente para comparar. */
     val change: Percent?,
 )
 
@@ -74,7 +75,7 @@ data class OptionalSpending(
     val count: Int,
 )
 
-/** Plan mensual (presupuesto general) frente a lo real. */
+/** Plan del ciclo de pago (presupuesto general) frente a lo real. */
 data class PlanComparison(
     val expectedIncome: Money,
     val actualIncome: Money,
@@ -88,8 +89,8 @@ data class PlanComparison(
     val incomeProgress: Percent? get() = Percent.of(actualIncome, expectedIncome)
 }
 
-data class MonthTrendPoint(
-    val month: YearMonth,
+data class TrendPoint(
+    val period: Period,
     val income: Money,
     val expense: Money,
 )

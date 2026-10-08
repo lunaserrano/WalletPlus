@@ -9,10 +9,11 @@ import com.walletplus.domain.calc.FinanceCalculator
 import com.walletplus.domain.expense
 import com.walletplus.domain.income
 import com.walletplus.domain.model.Budget
-import com.walletplus.domain.model.MonthlyPlan
 import com.walletplus.domain.model.SavingsGoal
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.model.Transaction
 import com.walletplus.domain.rules.FinanceRules
+import com.walletplus.domain.time.Period
 import com.walletplus.domain.usd
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,7 +24,7 @@ import java.time.YearMonth
 
 class RecommendationEngineTest {
 
-    private val month = YearMonth.from(TODAY)
+    private val month = Period.month(YearMonth.from(TODAY))
     private val rules = FinanceRules.Default
     private val engine = RecommendationEngine()
 
@@ -32,13 +33,13 @@ class RecommendationEngineTest {
         previous: List<Transaction> = emptyList(),
         budgets: List<Budget> = emptyList(),
         goals: List<SavingsGoal> = emptyList(),
-        plan: MonthlyPlan = MonthlyPlan(),
+        plan: SpendingPlan = SpendingPlan(),
     ): List<Insight> {
-        val summary = FinanceCalculator.monthlySummary(month, current)
+        val summary = FinanceCalculator.periodSummary(month, current)
         return engine.generate(
             InsightContext(
                 summary = summary,
-                previousSummary = FinanceCalculator.monthlySummary(month.minusMonths(1), previous),
+                previousSummary = FinanceCalculator.periodSummary(month.previous(), previous),
                 distribution = FinanceCalculator.categoryDistribution(current, CATEGORIES),
                 categoryChanges = FinanceCalculator.compareCategories(current, previous, CATEGORIES, rules.insights.minimumComparableAmount),
                 optionalSpending = FinanceCalculator.optionalSpending(current),
@@ -94,7 +95,7 @@ class RecommendationEngineTest {
             targetDate = TODAY.plusWeeks(10), createdAt = Instant.EPOCH,
         )
         val pace = insights(listOf(income(usd(100))), goals = listOf(goal)).filterIsInstance<Insight.GoalPace>().single()
-        assertEquals(usd(65), pace.perWeek)
+        assertEquals(usd(65), pace.amount)
     }
 
     @Test
@@ -102,14 +103,14 @@ class RecommendationEngineTest {
         val saving = insights(listOf(income(usd(1000)), expense(usd(600))))
         assertTrue(saving.any { it is Insight.SavingsRate })
         val overspent = insights(listOf(income(usd(500)), expense(usd(600))))
-        assertTrue(overspent.any { it is Insight.MonthOverspent })
+        assertTrue(overspent.any { it is Insight.PeriodOverspent })
         assertTrue(overspent.none { it is Insight.SavingsRate })
     }
 
     @Test
     fun `categoria principal, gastos pequenos y limite del plan`() {
         val txs = List(6) { expense(usd(3)) } + expense(usd(900), TRANSPORT)
-        val result = insights(txs, plan = MonthlyPlan(spendingLimit = usd(800)))
+        val result = insights(txs, plan = SpendingPlan(spendingLimit = usd(800)))
         assertEquals(TRANSPORT, result.filterIsInstance<Insight.TopCategory>().single().category)
         assertTrue(result.any { it is Insight.SmallExpensesAddUp })
         assertTrue(result.any { it is Insight.PlanSpendingExceeded })

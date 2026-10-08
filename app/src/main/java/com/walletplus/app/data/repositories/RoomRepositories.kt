@@ -81,6 +81,7 @@ class RoomTransactionRepository(private val dao: TransactionDao) : TransactionRe
 
 class RoomBudgetRepository(private val dao: BudgetDao) : BudgetRepository {
     override fun observeAll(): Flow<List<Budget>> = dao.observeAll().map { list -> list.map { it.toDomain() } }
+    override suspend fun getAll(): List<Budget> = dao.getAll().map { it.toDomain() }
     override suspend fun getByCategory(categoryId: Long): Budget? = dao.getByCategory(categoryId)?.toDomain()
     override suspend fun save(budget: Budget): Long = resolveId(budget.id, dao.upsert(budget.toEntity()))
     override suspend fun delete(id: Long) = dao.delete(id)

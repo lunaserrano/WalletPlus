@@ -8,12 +8,13 @@ import com.walletplus.domain.TRANSPORT
 import com.walletplus.domain.expense
 import com.walletplus.domain.income
 import com.walletplus.domain.model.Budget
-import com.walletplus.domain.model.MonthlyPlan
 import com.walletplus.domain.model.SavingsGoal
+import com.walletplus.domain.model.SpendingPlan
 import com.walletplus.domain.money.Money
 import com.walletplus.domain.money.Percent
 import com.walletplus.domain.rules.BudgetThresholds
 import com.walletplus.domain.rules.InsightThresholds
+import com.walletplus.domain.time.Period
 import com.walletplus.domain.usd
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,7 +26,7 @@ import java.time.YearMonth
 
 class FinanceCalculatorTest {
 
-    private val month = YearMonth.from(TODAY)
+    private val month = Period.month(YearMonth.from(TODAY))
 
     @Test
     fun `saldo = inicial + ingresos - gastos`() {
@@ -46,7 +47,7 @@ class FinanceCalculatorTest {
             expense(usd(457, 50)),
             expense(usd(999), date = TODAY.minusMonths(1)),
         )
-        val summary = FinanceCalculator.monthlySummary(month, txs)
+        val summary = FinanceCalculator.periodSummary(month, txs)
         assertEquals(usd(1200), summary.income)
         assertEquals(usd(457, 50), summary.expense)
         assertEquals(usd(742, 50), summary.savings)
@@ -55,7 +56,7 @@ class FinanceCalculatorTest {
 
     @Test
     fun `porcentaje de ahorro sin ingresos es null y no NaN`() {
-        val summary = FinanceCalculator.monthlySummary(month, listOf(expense(usd(10))))
+        val summary = FinanceCalculator.periodSummary(month, listOf(expense(usd(10))))
         assertNull(summary.savingsRate)
         assertNull(FinanceCalculator.savingsRate(Money.ZERO, Money.ZERO))
     }
@@ -120,6 +121,7 @@ class FinanceCalculatorTest {
         assertEquals(usd(650), progress.remaining)
         assertEquals(Percent.ofWhole(35), progress.percent)
         assertEquals(usd(65), progress.perWeek)
+        assertEquals(usd(130), progress.perFortnight) // 5 días de pago (16 oct … 16 dic)
         assertEquals(usd(216, 67), progress.perMonth) // 650 / 3 meses, redondeado hacia arriba
         assertFalse(progress.isOverdue)
     }
@@ -182,11 +184,11 @@ class FinanceCalculatorTest {
 
     @Test
     fun `plan mensual frente a lo real`() {
-        val summary = FinanceCalculator.monthlySummary(month, listOf(income(usd(1000)), expense(usd(600))))
-        val plan = FinanceCalculator.planComparison(MonthlyPlan(usd(1200), usd(800), usd(400)), summary)
+        val summary = FinanceCalculator.periodSummary(month, listOf(income(usd(1000)), expense(usd(600))))
+        val plan = FinanceCalculator.planComparison(SpendingPlan(usd(1200), usd(800), usd(400)), summary)
         assertEquals(Percent.ofWhole(75), plan.spendingProgress)
         assertEquals(Percent.ofWhole(100), plan.savingsProgress)
-        assertNull(FinanceCalculator.planComparison(MonthlyPlan(), summary).spendingProgress)
+        assertNull(FinanceCalculator.planComparison(SpendingPlan(), summary).spendingProgress)
     }
 
     private fun goal(target: Money, saved: Money, date: java.time.LocalDate?) = SavingsGoal(
